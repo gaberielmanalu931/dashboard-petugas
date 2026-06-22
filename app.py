@@ -14,6 +14,10 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
+if st.button("🔄 Refresh Data"):
+    st.cache_data.clear()
+    st.rerun()
+
 FILE = "mapping_petugas.xlsx"
 
 # =====================================================
