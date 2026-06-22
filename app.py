@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import os
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 # =====================================================
 # CONFIG
@@ -25,14 +26,16 @@ FILE = "mapping_petugas.xlsx"
 # =====================================================
 
 @st.cache_data
-def load_data():
+def load_data(file_time):
     df_ppl = pd.read_excel(FILE, sheet_name="PPL")
     df_pml = pd.read_excel(FILE, sheet_name="PML")
 
     return df_ppl, df_pml
 
 
-df_ppl, df_pml = load_data()
+df_ppl, df_pml = load_data(
+    os.path.getmtime(FILE)
+)
 
 # =====================================================
 # UTILITIES
@@ -63,7 +66,16 @@ def waktu_update_file():
 
     waktu = os.path.getmtime(FILE)
 
-    return datetime.fromtimestamp(waktu).strftime(
+    waktu_utc = datetime.fromtimestamp(
+        waktu,
+        tz=ZoneInfo("UTC")
+    )
+
+    waktu_indonesia = waktu_utc.astimezone(
+        ZoneInfo("Asia/Makassar")
+    )
+
+    return waktu_indonesia.strftime(
         "%d %B %Y %H:%M"
     )
 
