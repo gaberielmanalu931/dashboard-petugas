@@ -136,6 +136,7 @@ def warna_status(row):
         ]
         else ""
         for col in row.index
+            
     ]
 
 
@@ -263,9 +264,19 @@ with tab_ppl:
         col.replace(" ", "\n")
         for col in display_ppl.columns
     ]
-    display_ppl = data_ppl.drop(
-    columns=["email"],
-    errors="ignore"
+    display_ppl = (
+        data_ppl
+        .drop(
+            columns=["email"],
+            errors="ignore"
+        )
+        .reset_index(drop=True)
+    )
+
+    display_ppl.insert(
+        0,
+        "No",
+        range(1, len(display_ppl) + 1)
     )
 
 
@@ -273,6 +284,7 @@ with tab_ppl:
         format_table(display_ppl),
         use_container_width=True,
         height=700,
+        hide_index=True,
         column_config={
             "PPL": st.column_config.TextColumn(
                 width="medium"
@@ -363,15 +375,27 @@ with tab_pml:
 
     st.divider()
 
-    display_pml = data_pml.drop(
+    display_pml = (
+        data_pml
+        .drop(
         columns=["email"],
         errors="ignore"
+        )
+        .reset_index(drop=True)
     )
+    
 
+
+    display_pml.insert(
+        0,
+        "No",
+        range(1, len(display_pml) + 1)
+    )
     st.dataframe(
-        format_table(data_pml),
+        format_table(display_pml),
         use_container_width=True,
-        height=700
+        height=700,
+        hide_index=True
     )
 
     st.download_button(
