@@ -1,8 +1,9 @@
 import streamlit as st
 import pandas as pd
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
+
 
 # =====================================================
 # CONFIG
@@ -21,19 +22,38 @@ if st.button("🔄 Refresh Data"):
 
 FILE = "mapping_petugas.xlsx"
 
+update_file = datetime.fromtimestamp(
+    os.path.getmtime(FILE)
+)
+
+tanggal_kemarin = (
+    update_file - timedelta(days=1)
+).strftime("%d %B %Y")
+
 # =====================================================
 # LOAD DATA
 # =====================================================
 
 @st.cache_data
 def load_data(file_time):
+
     df_ppl = pd.read_excel(FILE, sheet_name="PPL")
+
     df_pml = pd.read_excel(FILE, sheet_name="PML")
 
-    return df_ppl, df_pml
+    df_harian = pd.read_excel(
+        FILE,
+        sheet_name="HARIAN"
+    )
+
+    return (
+        df_ppl,
+        df_pml,
+        df_harian
+    )
 
 
-df_ppl, df_pml = load_data(
+df_ppl, df_pml, df_harian = load_data(
     os.path.getmtime(FILE)
 )
 
@@ -155,14 +175,273 @@ st.caption(
 # TABS
 # =====================================================
 
-tab_ppl, tab_pml, tab_ringkasan = st.tabs(
+tab_harian, tab_ppl, tab_pml, tab_ringkasan = st.tabs(
     [
+        "📈 Progress Harian",
         "📋 Data PPL",
         "👤 Data PML",
         "📊 Ringkasan"
     ]
 )
 
+with tab_harian:
+
+    st.subheader("📈 Progress Harian Petugas")
+
+    filter_col1, filter_col2 = st.columns(2)
+
+    with filter_col1:
+
+        pilih_pml_harian = st.multiselect(
+            "Filter PML",
+            sorted(
+                df_harian["PML"]
+                .dropna()
+                .unique()
+            ),
+            key="filter_pml_harian"
+        )
+
+    with filter_col2:
+
+        pilih_taskforce_harian = st.multiselect(
+            "Filter Taskforce",
+            sorted(
+                df_harian["TASKFORCE"]
+                .dropna()
+                .unique()
+            ),
+            key="filter_taskforce_harian"
+        )
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+
+        filter_jabatan = st.multiselect(
+            "Filter Jabatan",
+            sorted(
+                df_harian["JABATAN"]
+                .dropna()
+                .unique()
+            ),
+            key="filter_jabatan_harian"
+        )
+
+    with col2:
+
+        sort_harian = st.selectbox(
+            "Urutkan Berdasarkan",
+            [
+                "KEMARIN",
+                "HARI INI",
+                "PROGRESS"
+            ],
+            index=2,
+            key="sort_harian"
+        )
+
+    urutan_harian = st.radio(
+        "Urutan",
+        [
+            "Kecil ke besar",
+            "Besar ke kecil"
+        ],
+        horizontal=True,
+        key="urutan_harian"
+    )
+
+    data_harian = df_harian.copy()
+
+    if pilih_pml_harian:
+
+        data_harian = data_harian[
+            data_harian["PML"]
+            .isin(pilih_pml_harian)
+        ]
+
+    if pilih_taskforce_harian:
+
+        data_harian = data_harian[
+            data_harian["TASKFORCE"]
+            .isin(pilih_taskforce_harian)
+        ]
+
+    if filter_jabatan:
+
+        data_harian = data_harian[
+            data_harian["JABATAN"]
+            .isin(filter_jabatan)
+        ]
+
+    data_harian = data_harian.sort_values(
+        by=sort_harian,
+        ascending=(
+            urutan_harian
+            == "Kecil ke besar"
+        )
+    )
+
+    display_harian = (
+        data_harian
+        .reset_index(drop=True)
+    )
+
+    display_harian.insert(
+        0,
+        "No",
+        range(
+            1,
+            len(display_harian)+1
+        )
+    )
+
+    
+
+    st.divider()
+
+    batas_progress = 10
+
+      
+
+    chart_data = (
+        data_harian[
+            data_harian["PROGRESS"] < batas_progress
+        ]
+        .sort_values(
+            by="PROGRESS",
+            ascending=True
+        )
+    )
+
+    batas_progress = 10
+
+    petugas_rendah = (
+        data_harian[
+            (data_harian["PROGRESS"] < batas_progress)
+            &
+            (data_harian["JABATAN"] == "PPL")
+        ]
+        .sort_values(
+            by="PROGRESS",
+            ascending=True
+        )
+    )
+
+    st.subheader(
+    f"🚨 {len(petugas_rendah)} PPL dengan Progress Harian di Bawah {batas_progress} pada {tanggal_kemarin}"
+    )
+
+    col1, col2, col3 = st.columns(3)
+
+    col1.metric(
+        "Total Petugas",
+        len(data_harian)
+    )
+
+    col2.metric(
+        "PPL < 10",
+        len(petugas_rendah)
+    )
+
+    col3.metric(
+        "Rata-rata Progress",
+        round(data_harian["PROGRESS"].mean(), 1)
+    )
+
+    if len(petugas_rendah) > 0:
+
+        jumlah_kolom = 6
+
+        for i in range(
+            0,
+            len(petugas_rendah),
+            jumlah_kolom
+        ):
+
+            cols = st.columns(
+                jumlah_kolom
+            )
+
+            for j, (_, row) in enumerate(
+                petugas_rendah.iloc[
+                    i:i+jumlah_kolom
+                ].iterrows()
+            ):
+
+                with cols[j]:
+
+                    progress = int(row["PROGRESS"])
+
+                    if progress <= 3:
+                        warna_emoji = "🔴"
+                    elif progress <= 6:
+                        warna_emoji = "🟠"
+                    else:
+                        warna_emoji = "🟡"
+
+                    with st.container(border=False):
+
+                        st.markdown(
+                            f"""
+                        <div style="
+                        background-color:#991b1b;
+                        color:white;
+                        padding:8px;
+                        border-radius:8px;
+                        text-align:center;
+                        height:120px;
+                        display:flex;
+                        flex-direction:column;
+                        justify-content:center;
+                        margin-bottom:12px;
+                        ">
+
+                        <div style="
+                        font-weight:bold;
+                        font-size:12px;
+                        line-height:1.1;
+                        height:28px;
+                        overflow:hidden;
+                        ">
+                        {row['NAMA PETUGAS']}
+                        </div>
+
+                        <div style="margin-top:4px;font-size:11px;">
+                        Kemarin: {int(row['KEMARIN'])}
+                        </div>
+
+                        <div style="font-size:11px;">
+                        Hari Ini: {int(row['HARI INI'])}
+                        </div>
+
+                        <div style="
+                        font-size:16px;
+                        font-weight:bold;
+                        margin-top:4px;
+                        ">
+                        Progress: {int(row['PROGRESS'])}
+                        </div>
+
+                        </div>
+                        """,
+                            unsafe_allow_html=True
+                        )
+    else:
+
+        st.success(
+            "🎉 Semua petugas memiliki progress minimal 10."
+        )
+
+    st.subheader("Tabel Progress Harian")
+
+    st.dataframe(
+        display_harian,
+        width="stretch",
+        height=500,
+        hide_index=True
+    )
+    
 # =====================================================
 # TAB PPL
 # =====================================================
@@ -282,7 +561,7 @@ with tab_ppl:
 
     st.dataframe(
         format_table(display_ppl),
-        use_container_width=True,
+        width="stretch",
         height=700,
         hide_index=True,
         column_config={
@@ -393,7 +672,7 @@ with tab_pml:
     )
     st.dataframe(
         format_table(display_pml),
-        use_container_width=True,
+        width="stretch",
         height=700,
         hide_index=True
     )
