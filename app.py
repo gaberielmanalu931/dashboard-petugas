@@ -3,11 +3,14 @@ import pandas as pd
 import os
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
+from html import escape
 
 
 # =====================================================
 # CONFIG
 # =====================================================
+
+
 
 st.set_page_config(
     page_title="Dashboard Monitoring Petugas",
@@ -16,46 +19,209 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
+st.markdown("""
+<style>
+
+/* =======================================
+   GLOBAL
+======================================= */
+
+.main {
+    padding-top: 1rem;
+}
+
+/* =======================================
+   TABS
+======================================= */
+
+button[data-baseweb="tab"] {
+    font-size: 15px;
+    font-weight: 600;
+    padding-top: 10px;
+    padding-bottom: 10px;
+}
+
+button[data-baseweb="tab"][aria-selected="true"] {
+    border-bottom: 3px solid #3b82f6;
+}
+
+/* =======================================
+   KPI METRIC
+======================================= */
+
+div[data-testid="stMetric"] {
+    background-color: rgba(128,128,128,0.08);
+    border: 1px solid rgba(128,128,128,0.15);
+    border-radius: 12px;
+    padding: 14px;
+}
+
+div[data-testid="stMetricLabel"] {
+    font-weight: 600;
+}
+
+div[data-testid="stMetricValue"] {
+    font-size: 28px;
+}
+
+/* =======================================
+   DATAFRAME
+======================================= */
+
+div[data-testid="stDataFrame"] {
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid rgba(128,128,128,0.15);
+}
+
+/* =======================================
+   CONTAINER CARD
+======================================= */
+
+div[data-testid="stVerticalBlockBorderWrapper"] {
+    border-radius: 12px;
+}
+
+/* =======================================
+   ALERT CARD (MERAH)
+======================================= */
+
+div[data-testid="stAlertContainer"][kind="error"] {
+    border-left: 6px solid #dc2626;
+    border-radius: 10px;
+}
+
+/* =======================================
+   ALERT CARD (HIJAU)
+======================================= */
+
+div[data-testid="stAlertContainer"][kind="success"] {
+    border-left: 6px solid #16a34a;
+    border-radius: 10px;
+}
+
+/* =======================================
+   MULTISELECT
+======================================= */
+
+div[data-baseweb="select"] {
+    border-radius: 10px;
+}
+
+/* =======================================
+   SELECTBOX
+======================================= */
+
+div[data-baseweb="popover"] {
+    border-radius: 10px;
+}
+
+/* =======================================
+   DOWNLOAD BUTTON
+======================================= */
+
+button[kind="secondary"] {
+    border-radius: 10px;
+}
+
+/* =======================================
+   SCROLLBAR
+======================================= */
+
+::-webkit-scrollbar {
+    height: 10px;
+    width: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(120,120,120,0.4);
+    border-radius: 10px;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
 if st.button("🔄 Refresh Data"):
     st.cache_data.clear()
     st.rerun()
 
 FILE = "mapping_petugas.xlsx"
 
-update_file = datetime.fromtimestamp(
-    os.path.getmtime(FILE)
-)
-
-tanggal_kemarin = (
-    update_file - timedelta(days=1)
-).strftime("%d %B %Y")
-
 # =====================================================
 # LOAD DATA
 # =====================================================
 
 @st.cache_data
-def load_data(file_time):
+def load_data():
 
-    df_ppl = pd.read_excel(FILE, sheet_name="PPL")
+    df_ppl = pd.read_excel(
+        FILE,
+        sheet_name="PPL"
+    )
 
-    df_pml = pd.read_excel(FILE, sheet_name="PML")
+    df_pml = pd.read_excel(
+        FILE,
+        sheet_name="PML"
+    )
 
     df_harian = pd.read_excel(
         FILE,
         sheet_name="HARIAN"
     )
 
+    df_harian.columns = (
+        df_harian.columns
+        .astype(str)
+        .str.strip()
+        .str.upper()
+    )
+
+    df_target = pd.read_excel(
+        FILE,
+        sheet_name="TARGET"
+    )
+
     return (
         df_ppl,
         df_pml,
-        df_harian
+        df_harian,
+        df_target
     )
 
 
-df_ppl, df_pml, df_harian = load_data(
+df_ppl, df_pml, df_harian, df_target = load_data()
+
+update_file = datetime.fromtimestamp(
     os.path.getmtime(FILE)
 )
+
+tanggal_data = (
+    update_file.date()
+)
+
+df_target["TANGGAL"] = pd.to_datetime(
+    df_target["TANGGAL"]
+).dt.date
+
+target_hari_ini = (
+    df_target.loc[
+        df_target["TANGGAL"] == tanggal_data,
+        "TARGET"
+    ]
+)
+
+if len(target_hari_ini) > 0:
+    target_hari_ini = int(
+        target_hari_ini.iloc[0]
+    )
+else:
+    target_hari_ini = 0
+
+tanggal_kemarin = (
+    update_file - timedelta(days=1)
+).strftime("%d %B %Y")
+
+
 
 # =====================================================
 # UTILITIES
@@ -131,6 +297,65 @@ def format_table(df):
         )
     )
 
+def singkat_nama(nama, panjang=22):
+    nama = str(nama)
+
+    if len(nama) <= panjang:
+        return nama
+
+    return nama[:panjang] + "..."
+
+def tampil_card(
+    nama,
+    dua_hari_lalu,
+    kemarin,
+    hari_ini,
+    progress,
+    target,
+    warna
+):
+
+    st.markdown(
+        f"""
+        <div style="
+            background-color:{warna};
+            color:white;
+            border-radius:10px;
+            padding:8px;
+            text-align:center;
+            min-height:110px;
+            margin:4px;
+            margin-bottom:12px;
+        ">
+
+        <div style="
+            font-weight:bold;
+            font-size:12px;
+            margin-bottom:6px;
+        ">
+        {nama}
+        </div>
+
+        <div style="font-size:11px;">
+        {int(dua_hari_lalu)} → {int(kemarin)} → {int(hari_ini)}
+        </div>
+
+        <div style="font-size:11px;">
+        Target {int(target)}
+        </div>
+
+        <div style="
+            margin-top:6px;
+            font-size:18px;
+            font-weight:bold;
+        ">
+        +{int(progress)}
+        </div>
+
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 # =====================================================
 # TARGET HARIAN DINAMIS
 # =====================================================
@@ -316,11 +541,32 @@ with tab_harian:
 
     batas_progress = 10
 
+    petugas_stagnan = (
+        data_harian[
+            (data_harian["JABATAN"] == "PPL")
+            &
+            (
+                data_harian["STATUS"]
+                .astype(str)
+                .str.upper()
+                == "TRUE"
+            )
+        ]
+    )
+
     petugas_rendah = (
         data_harian[
-            (data_harian["PROGRESS"] < batas_progress)
-            &
             (data_harian["JABATAN"] == "PPL")
+            &
+            (
+                data_harian["PROGRESS"]
+                < batas_progress
+            )
+            &
+            (
+                data_harian["HARI INI"]
+                < target_hari_ini
+            )
         ]
         .sort_values(
             by="PROGRESS",
@@ -328,8 +574,70 @@ with tab_harian:
         )
     )
 
+    petugas_unggul = (
+        data_harian[
+            (data_harian["JABATAN"] == "PPL")
+            &
+            (
+                data_harian["PROGRESS"]
+                >= batas_progress
+            )
+            &
+            (
+                data_harian["HARI INI"]
+                >= target_hari_ini
+            )
+        ]
+        .sort_values(
+            by="PROGRESS",
+            ascending=False
+        )
+    )
+
     st.subheader(
-    f"🚨 {len(petugas_rendah)} PPL dengan Progress Harian di Bawah {batas_progress} pada {tanggal_kemarin}"
+        f"⛔ {len(petugas_stagnan)} PPL dengan Progress Stagnan Selama 3 Hari"
+    )
+
+    if len(petugas_stagnan) > 0:
+
+        jumlah_kolom = 6
+
+        for i in range(
+            0,
+            len(petugas_stagnan),
+            jumlah_kolom
+        ):
+
+            cols = st.columns(
+                jumlah_kolom,
+                gap="medium"
+            )
+
+            for j, (_, row) in enumerate(
+                petugas_stagnan.iloc[
+                    i:i+jumlah_kolom
+                ].iterrows()
+            ):
+
+                with cols[j]:
+
+                    tampil_card(
+                        row["NAMA PETUGAS"],
+                        row.iloc[4],
+                        row["KEMARIN"],
+                        row["HARI INI"],
+                        row["PROGRESS"],
+                        target_hari_ini,
+                        "#7f1d1d"
+                    )
+
+    else:
+
+        st.success(
+            "🎉 Tidak ada petugas yang stagnan selama 3 hari."
+        )
+    st.subheader(
+        f"🚨 {len(petugas_rendah)} PPL dengan Progress Harian < {batas_progress} dan Capaian < Target ({target_hari_ini}) pada {tanggal_kemarin}"
     )
 
     col1, col2, col3 = st.columns(3)
@@ -360,7 +668,8 @@ with tab_harian:
         ):
 
             cols = st.columns(
-                jumlah_kolom
+                jumlah_kolom,
+                gap="medium"
             )
 
             for j, (_, row) in enumerate(
@@ -370,63 +679,15 @@ with tab_harian:
             ):
 
                 with cols[j]:
-
-                    progress = int(row["PROGRESS"])
-
-                    if progress <= 3:
-                        warna_emoji = "🔴"
-                    elif progress <= 6:
-                        warna_emoji = "🟠"
-                    else:
-                        warna_emoji = "🟡"
-
-                    with st.container(border=False):
-
-                        st.markdown(
-                            f"""
-                        <div style="
-                        background-color:#991b1b;
-                        color:white;
-                        padding:8px;
-                        border-radius:8px;
-                        text-align:center;
-                        height:120px;
-                        display:flex;
-                        flex-direction:column;
-                        justify-content:center;
-                        margin-bottom:12px;
-                        ">
-
-                        <div style="
-                        font-weight:bold;
-                        font-size:12px;
-                        line-height:1.1;
-                        height:28px;
-                        overflow:hidden;
-                        ">
-                        {row['NAMA PETUGAS']}
-                        </div>
-
-                        <div style="margin-top:4px;font-size:11px;">
-                        Kemarin: {int(row['KEMARIN'])}
-                        </div>
-
-                        <div style="font-size:11px;">
-                        Hari Ini: {int(row['HARI INI'])}
-                        </div>
-
-                        <div style="
-                        font-size:16px;
-                        font-weight:bold;
-                        margin-top:4px;
-                        ">
-                        Progress: {int(row['PROGRESS'])}
-                        </div>
-
-                        </div>
-                        """,
-                            unsafe_allow_html=True
-                        )
+                    tampil_card(
+                        row["NAMA PETUGAS"],
+                        row.iloc[4],
+                        row["KEMARIN"],
+                        row["HARI INI"],
+                        row["PROGRESS"],
+                        target_hari_ini,
+                        "#bd480a"
+                    )
     else:
 
         st.success(
@@ -441,7 +702,44 @@ with tab_harian:
         height=500,
         hide_index=True
     )
+
+    st.divider()
+
+    st.subheader(
+        f"🏆 {len(petugas_unggul)} PPL Melampaui Target pada {tanggal_kemarin}"
+    )
     
+    if len(petugas_unggul) > 0:
+
+        jumlah_kolom = 5
+
+        for i in range(
+            0,
+            len(petugas_unggul),
+            jumlah_kolom
+        ):
+
+            cols = st.columns(
+                jumlah_kolom,
+                gap="medium"
+            )
+
+            for j, (_, row) in enumerate(
+                petugas_unggul.iloc[
+                    i:i+jumlah_kolom
+                ].iterrows()
+            ):
+
+                with cols[j]:
+                    tampil_card(
+                    row["NAMA PETUGAS"],
+                    row.iloc[4],
+                    row["KEMARIN"],
+                    row["HARI INI"],
+                    row["PROGRESS"],
+                    target_hari_ini,
+                    "#166534"
+                )
 # =====================================================
 # TAB PPL
 # =====================================================
@@ -691,7 +989,85 @@ with tab_pml:
 
 with tab_ringkasan:
 
-    st.subheader("📊 Ringkasan Monitoring")
+    st.subheader(
+        f"📅 Monitoring Petugas {tanggal_kemarin}"
+    )
+    col_stagnan, col_rendah, col_unggul = st.columns(3)
+
+    with col_stagnan:
+
+        st.error(
+            f"⛔ STAGNAN ({len(petugas_stagnan)})"
+        )
+
+        for nama in petugas_stagnan["NAMA PETUGAS"]:
+            st.markdown(
+                f"""
+                <div style="
+                    color:inherit;
+                    font-weight:700;
+                    font-size:14px;
+                    margin-bottom:2px;
+                ">
+                    {nama}
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+    
+    with col_rendah:
+
+        st.warning(
+            f"🚨 DI BAWAH TARGET ({len(petugas_rendah)})"
+        )
+
+        subcols = st.columns(3)
+
+        for i, nama in enumerate(
+            petugas_rendah["NAMA PETUGAS"]
+        ):
+
+            with subcols[i % 3]:
+                st.markdown(
+                    f"""
+                    <div style="
+                        color:inherit;
+                        font-weight:700;
+                        font-size:14px;
+                        margin-bottom:2px;
+                    ">
+                        {nama}
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+
+    with col_unggul:
+
+        st.success(
+            f"🏆 CAPAI TARGET ({len(petugas_unggul)})"
+        )
+
+        subcols = st.columns(2)
+
+        for i, nama in enumerate(
+            petugas_unggul["NAMA PETUGAS"]
+        ):
+
+            with subcols[i % 2]:
+                st.markdown(
+                    f"""
+                    <div style="
+                        color:inherit;
+                        font-weight:700;
+                        font-size:14px;
+                        margin-bottom:2px;
+                    ">
+                        {nama}
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
 
     total_dokumen = df_ppl["total"].sum()
 
