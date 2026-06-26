@@ -579,9 +579,10 @@ with tab_harian:
             (data_harian["JABATAN"] == "PPL")
             &
             (
-                data_harian["PROGRESS"]
-                >= batas_progress
+                data_harian["HARI INI"]
+                >= target_hari_ini
             )
+
         ]
         .sort_values(
             by="PROGRESS",
@@ -595,7 +596,7 @@ with tab_harian:
 
     if len(petugas_stagnan) > 0:
 
-        jumlah_kolom = 6
+        jumlah_kolom = 3
 
         for i in range(
             0,
