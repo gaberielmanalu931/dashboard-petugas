@@ -151,7 +151,7 @@ FILE = "mapping_petugas.xlsx"
 # LOAD DATA
 # =====================================================
 
-@st.cache_data
+@st.cache_data(ttl=60)
 def load_data():
 
     df_ppl = pd.read_excel(
