@@ -582,11 +582,6 @@ with tab_harian:
                 data_harian["PROGRESS"]
                 >= batas_progress
             )
-            &
-            (
-                data_harian["HARI INI"]
-                >= target_hari_ini
-            )
         ]
         .sort_values(
             by="PROGRESS",
@@ -711,7 +706,7 @@ with tab_harian:
     
     if len(petugas_unggul) > 0:
 
-        jumlah_kolom = 5
+        jumlah_kolom = 10
 
         for i in range(
             0,
@@ -721,7 +716,7 @@ with tab_harian:
 
             cols = st.columns(
                 jumlah_kolom,
-                gap="medium"
+                gap="small"
             )
 
             for j, (_, row) in enumerate(
@@ -997,7 +992,7 @@ with tab_ringkasan:
     with col_stagnan:
 
         st.error(
-            f"⛔ STAGNAN ({len(petugas_stagnan)})"
+            f"⛔ STAGNAN ({len(petugas_stagnan )} PPL)"
         )
 
         for nama in petugas_stagnan["NAMA PETUGAS"]:
@@ -1018,7 +1013,7 @@ with tab_ringkasan:
     with col_rendah:
 
         st.warning(
-            f"🚨 DI BAWAH TARGET ({len(petugas_rendah)})"
+            f"🚨 DI BAWAH TARGET ({len(petugas_rendah)} PPL)"
         )
 
         subcols = st.columns(3)
@@ -1045,16 +1040,16 @@ with tab_ringkasan:
     with col_unggul:
 
         st.success(
-            f"🏆 CAPAI TARGET ({len(petugas_unggul)})"
+            f"🏆 CAPAI TARGET ({len(petugas_unggul)} PPL)"
         )
 
-        subcols = st.columns(2)
+        subcols = st.columns(4)
 
         for i, nama in enumerate(
             petugas_unggul["NAMA PETUGAS"]
         ):
 
-            with subcols[i % 2]:
+            with subcols[i % 4]:
                 st.markdown(
                     f"""
                     <div style="
