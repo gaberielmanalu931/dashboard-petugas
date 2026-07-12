@@ -694,7 +694,7 @@ with tab_harian:
 
     st.dataframe(
         display_harian,
-        width="stretch",
+        use_container_width=True,
         height=500,
         hide_index=True
     )
@@ -855,7 +855,7 @@ with tab_ppl:
 
     st.dataframe(
         format_table(display_ppl),
-        width="stretch",
+        use_container_width=True,
         height=700,
         hide_index=True,
         column_config={
@@ -966,7 +966,7 @@ with tab_pml:
     )
     st.dataframe(
         format_table(display_pml),
-        width="stretch",
+        use_container_width=True,
         height=700,
         hide_index=True
     )
