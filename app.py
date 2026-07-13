@@ -170,6 +170,7 @@ def load_data():
 
     return df_ppl, df_pml, df_harian, df_target
 
+df_ppl, df_pml, df_harian, df_target = load_data()
 
 update_file = datetime.fromtimestamp(
     os.path.getmtime(FILE)
