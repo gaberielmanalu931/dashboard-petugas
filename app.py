@@ -172,17 +172,29 @@ def load_data():
 
 df_ppl, df_pml, df_harian, df_target = load_data()
 
+persentase_ppl = (
+    df_ppl.set_index("PPL")["PERSENTASE"]
+    .to_dict()
+)
+
 update_file = datetime.fromtimestamp(
     os.path.getmtime(FILE)
 )
 
 tanggal_data = (
-    update_file.date()
-)
+    update_file - timedelta(days=1)
+).date()
 
 df_target["TANGGAL"] = pd.to_datetime(
     df_target["TANGGAL"]
 ).dt.date
+
+df_target["TARGET"] = (
+    df_target["TARGET"]
+    .astype(str)
+    .str.replace(",", ".", regex=False)
+    .astype(float)
+)
 
 target_hari_ini = (
     df_target.loc[
@@ -192,15 +204,13 @@ target_hari_ini = (
 )
 
 if len(target_hari_ini) > 0:
-    target_hari_ini = int(
-        target_hari_ini.iloc[0]
-    )
+    target_hari_ini = float(target_hari_ini.iloc[0])
 else:
     target_hari_ini = 0
 
-tanggal_kemarin = (
-    update_file - timedelta(days=1)
-).strftime("%d %B %Y")
+tanggal_kemarin = tanggal_data.strftime(
+    "%d %B %Y"
+)
 
 
 
@@ -292,10 +302,9 @@ def tampil_card(
     kemarin,
     hari_ini,
     progress,
-    target,
+    persentase,
     warna
 ):
-
     st.markdown(
         f"""
         <div style="
@@ -322,7 +331,7 @@ def tampil_card(
         </div>
 
         <div style="font-size:11px;">
-        Target {int(target)}
+        Capaian: {persentase:.2f}%
         </div>
 
         <div style="
@@ -534,20 +543,15 @@ with tab_harian:
             )
         ]
     )
+    
+    nama_rendah = df_ppl.loc[
+        df_ppl["PERSENTASE"] < target_hari_ini,
+        "PPL"
+    ]
 
     petugas_rendah = (
         data_harian[
-            (data_harian["JABATAN"] == "PPL")
-            &
-            (
-                data_harian["PROGRESS"]
-                < batas_progress
-            )
-            &
-            (
-                data_harian["HARI INI"]
-                < target_hari_ini
-            )
+            data_harian["NAMA PETUGAS"].isin(nama_rendah)
         ]
         .sort_values(
             by="PROGRESS",
@@ -555,15 +559,16 @@ with tab_harian:
         )
     )
 
+    # Cari nama PPL yang mencapai target
+    nama_unggul = df_ppl.loc[
+        df_ppl["PERSENTASE"] >= target_hari_ini,
+        "PPL"
+    ]
+
+    # Ambil data lengkap dari sheet HARIAN
     petugas_unggul = (
         data_harian[
-            (data_harian["JABATAN"] == "PPL")
-            &
-            (
-                data_harian["HARI INI"]
-                >= target_hari_ini
-            )
-
+            data_harian["NAMA PETUGAS"].isin(nama_unggul)
         ]
         .sort_values(
             by="PROGRESS",
@@ -614,7 +619,7 @@ with tab_harian:
             "🎉 Tidak ada petugas yang stagnan selama 3 hari."
         )
     st.subheader(
-        f"🚨 {len(petugas_rendah)} PPL dengan Progress Harian < {batas_progress} dan Capaian < Target ({target_hari_ini}) pada {tanggal_kemarin}"
+        f"🚨 {len(petugas_rendah)} PPL dengan Capaian di Bawah Target yaitu {target_hari_ini:.2f}% pada {tanggal_kemarin}"
     )
 
     col1, col2, col3 = st.columns(3)
@@ -625,7 +630,7 @@ with tab_harian:
     )
 
     col2.metric(
-        "PPL < 10",
+        "PPL di bawah Target",
         len(petugas_rendah)
     )
 
@@ -657,14 +662,17 @@ with tab_harian:
 
                 with cols[j]:
                     tampil_card(
+                    row["NAMA PETUGAS"],
+                    row.iloc[4],
+                    row["KEMARIN"],
+                    row["HARI INI"],
+                    row["PROGRESS"],
+                    persentase_ppl.get(
                         row["NAMA PETUGAS"],
-                        row.iloc[4],
-                        row["KEMARIN"],
-                        row["HARI INI"],
-                        row["PROGRESS"],
-                        target_hari_ini,
-                        "#bd480a"
-                    )
+                        0
+                    ),
+                    "#bd480a"
+                )
     else:
 
         st.success(
@@ -714,7 +722,10 @@ with tab_harian:
                     row["KEMARIN"],
                     row["HARI INI"],
                     row["PROGRESS"],
-                    target_hari_ini,
+                    persentase_ppl.get(
+                        row["NAMA PETUGAS"],
+                        0
+                    ),
                     "#166534"
                 )
 # =====================================================
@@ -742,26 +753,29 @@ with tab_ppl:
         )
 
     with col3:
-        sort_column = st.selectbox(
-            "Urutkan Berdasarkan",
-            SORT_COLUMNS,
-            key="sort_column_ppl"
-        )
+        sort_ppl = st.selectbox(
+        "Urutkan Berdasarkan",
+        [
+            "PERSENTASE",
+            "PROGRESS",
+            "TOTAL",
+            "APPROVED BY Pengawas",
+            "DRAFT",
+            "OPEN",
+            "REJECTED BY Pengawas"
+        ],
+        index=6,   # agar default langsung Persentase
+        key="sort_ppl"
+    )
 
     with col4:
 
-        target_ppl = st.number_input(
-            "⚠️ Filter PPL dibawah target",
-            min_value=0,
-            value=60,
-            step=10,
-            key="input_target_ppl"
+        tampilkan_bawah_target = st.checkbox(
+            f"Tampilkan hanya PPL dengan capaian di bawah target ({target_hari_ini:.2f}%)",
+            value=False
         )
 
-        hanya_belum_target = st.checkbox(
-            f"Tampilkan PPL progress < {target_ppl}",
-            key="filter_target_ppl"
-        )
+        
 
     ascending = st.radio(
         "Urutan",
@@ -782,14 +796,13 @@ with tab_ppl:
             data_ppl["TASKFORCE"].isin(pilih_taskforce)
         ]
 
-    if hanya_belum_target:
-
-        data_ppl = data_ppl[
-            data_ppl["PROGRESS"] < target_ppl
-        ]
+    if tampilkan_bawah_target:
+            data_ppl = data_ppl[
+                data_ppl["PERSENTASE"] < target_hari_ini
+            ]
 
     data_ppl = data_ppl.sort_values(
-        by=sort_column,
+        by=sort_ppl,
         ascending=(ascending == "Kecil ke besar")
     )
 
@@ -821,7 +834,11 @@ with tab_ppl:
     display_ppl = (
         data_ppl
         .drop(
-            columns=["email"],
+            columns=[
+            "REVOKED BY Pengawas",
+            "SUBMITTED RESPONDENT",
+            "OPEN", "email"
+        ],
             errors="ignore"
         )
         .reset_index(drop=True)
@@ -932,7 +949,7 @@ with tab_pml:
     display_pml = (
         data_pml
         .drop(
-        columns=["email"],
+        columns=["email", "OPEN", "SUBMITTED RESPONDENT", "DRAFT"],
         errors="ignore"
         )
         .reset_index(drop=True)
