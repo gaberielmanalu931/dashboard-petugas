@@ -160,6 +160,7 @@ def load_data():
     df_pml = pd.read_excel(xls, sheet_name="PML")
     df_harian = pd.read_excel(xls, sheet_name="HARIAN")
     df_target = pd.read_excel(xls, sheet_name="TARGET")
+    df_info = pd.read_excel(FILE, sheet_name="INFO")
 
     df_harian.columns = (
         df_harian.columns
@@ -168,22 +169,15 @@ def load_data():
         .str.upper()
     )
 
-    return df_ppl, df_pml, df_harian, df_target
+    return df_ppl, df_pml, df_harian, df_target, df_info
 
-df_ppl, df_pml, df_harian, df_target = load_data()
+df_ppl, df_pml, df_harian, df_target, df_info = load_data()
 
-persentase_ppl = (
-    df_ppl.set_index("PPL")["PERSENTASE"]
-    .to_dict()
-)
-
-update_file = datetime.fromtimestamp(
-    os.path.getmtime(FILE)
-)
-
-tanggal_data = (
-    update_file - timedelta(days=1)
+tanggal_data = pd.to_datetime(
+    df_info.loc[0, "TANGGAL_DATA"]
 ).date()
+
+tanggal_kemarin = tanggal_data.strftime("%d %B %Y")
 
 df_target["TANGGAL"] = pd.to_datetime(
     df_target["TANGGAL"]
@@ -196,22 +190,20 @@ df_target["TARGET"] = (
     .astype(float)
 )
 
-target_hari_ini = (
-    df_target.loc[
-        df_target["TANGGAL"] == tanggal_data,
-        "TARGET"
-    ]
-)
+target_series = df_target.loc[
+    df_target["TANGGAL"] == tanggal_data,
+    "TARGET"
+]
 
-if len(target_hari_ini) > 0:
-    target_hari_ini = float(target_hari_ini.iloc[0])
+if not target_series.empty:
+    target_hari_ini = float(target_series.iloc[0])
 else:
-    target_hari_ini = 0
-
-tanggal_kemarin = tanggal_data.strftime(
-    "%d %B %Y"
+    target_hari_ini = 0.0
+    
+persentase_ppl = (
+    df_ppl.set_index("PPL")["PERSENTASE"]
+    .to_dict()
 )
-
 
 
 # =====================================================
