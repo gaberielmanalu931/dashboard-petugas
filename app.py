@@ -151,23 +151,15 @@ FILE = "mapping_petugas.xlsx"
 # LOAD DATA
 # =====================================================
 
-@st.cache_data(ttl=60)
+@st.cache_data
 def load_data():
 
-    df_ppl = pd.read_excel(
-        FILE,
-        sheet_name="PPL"
-    )
+    xls = pd.ExcelFile(FILE)
 
-    df_pml = pd.read_excel(
-        FILE,
-        sheet_name="PML"
-    )
-
-    df_harian = pd.read_excel(
-        FILE,
-        sheet_name="HARIAN"
-    )
+    df_ppl = pd.read_excel(xls, sheet_name="PPL")
+    df_pml = pd.read_excel(xls, sheet_name="PML")
+    df_harian = pd.read_excel(xls, sheet_name="HARIAN")
+    df_target = pd.read_excel(xls, sheet_name="TARGET")
 
     df_harian.columns = (
         df_harian.columns
@@ -176,20 +168,8 @@ def load_data():
         .str.upper()
     )
 
-    df_target = pd.read_excel(
-        FILE,
-        sheet_name="TARGET"
-    )
+    return df_ppl, df_pml, df_harian, df_target
 
-    return (
-        df_ppl,
-        df_pml,
-        df_harian,
-        df_target
-    )
-
-
-df_ppl, df_pml, df_harian, df_target = load_data()
 
 update_file = datetime.fromtimestamp(
     os.path.getmtime(FILE)
