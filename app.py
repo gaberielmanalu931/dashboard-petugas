@@ -596,12 +596,15 @@ with tab_harian:
                 with cols[j]:
 
                     tampil_card(
+                    row["NAMA PETUGAS"],
+                    row.iloc[4],
+                    row["KEMARIN"],
+                    row["HARI INI"],
+                    row["PROGRESS"],
+                    persentase_ppl.get(
                         row["NAMA PETUGAS"],
-                        row.iloc[4],
-                        row["KEMARIN"],
-                        row["HARI INI"],
-                        row["PROGRESS"],
-                        target_hari_ini,
+                        0
+                    ),
                         "#7f1d1d"
                     )
 
