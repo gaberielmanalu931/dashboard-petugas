@@ -533,8 +533,19 @@ with tab_harian:
                 .str.upper()
                 == "TRUE"
             )
+            &
+            (
+                data_harian["NAMA PETUGAS"]
+                .map(persentase_ppl)
+                < target_hari_ini
+            )
         ]
+        .sort_values(
+            by="PROGRESS",
+            ascending=True
+        )
     )
+    
     
     nama_rendah = df_ppl.loc[
         df_ppl["PERSENTASE"] < target_hari_ini,
