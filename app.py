@@ -205,6 +205,11 @@ persentase_ppl = (
     .to_dict()
 )
 
+target_ppl = (
+    df_ppl.set_index("PPL")["TARGET"]
+    .to_dict()
+)
+
 
 # =====================================================
 # UTILITIES
@@ -295,6 +300,7 @@ def tampil_card(
     hari_ini,
     progress,
     persentase,
+    target,
     warna
 ):
     st.markdown(
@@ -323,8 +329,14 @@ def tampil_card(
         </div>
 
         <div style="font-size:11px;">
-        Capaian: {persentase:.2f}%
+            Capaian: {persentase:.2f}%
         </div>
+
+        <div style="font-size:11px;">
+            Target: {int(target)}
+        </div>
+
+    
 
         <div style="
             margin-top:6px;
@@ -460,6 +472,16 @@ with tab_harian:
 
     data_harian = df_harian.copy()
 
+    data_harian["PERSENTASE"] = (
+        data_harian["NAMA PETUGAS"]
+        .map(persentase_ppl)
+    )
+
+    data_harian["TARGET"] = (
+        data_harian["NAMA PETUGAS"]
+        .map(target_ppl)
+    )
+
     if pilih_pml_harian:
 
         data_harian = data_harian[
@@ -492,6 +514,14 @@ with tab_harian:
     display_harian = (
         data_harian
         .reset_index(drop=True)
+    )
+
+    display_harian = (
+        display_harian
+        .drop(
+            columns=["STATUS"],
+            errors="ignore"
+        )
     )
 
     display_harian.insert(
@@ -607,16 +637,14 @@ with tab_harian:
                 with cols[j]:
 
                     tampil_card(
-                    row["NAMA PETUGAS"],
-                    row.iloc[4],
-                    row["KEMARIN"],
-                    row["HARI INI"],
-                    row["PROGRESS"],
-                    persentase_ppl.get(
                         row["NAMA PETUGAS"],
-                        0
-                    ),
-                        "#7f1d1d"
+                        row.iloc[4],
+                        row["KEMARIN"],
+                        row["HARI INI"],
+                        row["PROGRESS"],
+                        row["PERSENTASE"],
+                        row["TARGET"],
+                        "#bd480a"
                     )
 
     else:
@@ -668,15 +696,13 @@ with tab_harian:
 
                 with cols[j]:
                     tampil_card(
-                    row["NAMA PETUGAS"],
-                    row.iloc[4],
-                    row["KEMARIN"],
-                    row["HARI INI"],
-                    row["PROGRESS"],
-                    persentase_ppl.get(
                         row["NAMA PETUGAS"],
-                        0
-                    ),
+                        row.iloc[4],
+                        row["KEMARIN"],
+                        row["HARI INI"],
+                        row["PROGRESS"],
+                        row["PERSENTASE"],
+                        row["TARGET"],
                     "#bd480a"
                 )
     else:
@@ -722,16 +748,14 @@ with tab_harian:
             ):
 
                 with cols[j]:
-                    tampil_card(
-                    row["NAMA PETUGAS"],
-                    row.iloc[4],
-                    row["KEMARIN"],
-                    row["HARI INI"],
-                    row["PROGRESS"],
-                    persentase_ppl.get(
+                   tampil_card(
                         row["NAMA PETUGAS"],
-                        0
-                    ),
+                        row.iloc[4],
+                        row["KEMARIN"],
+                        row["HARI INI"],
+                        row["PROGRESS"],
+                        row["PERSENTASE"],
+                        row["TARGET"],
                     "#166534"
                 )
 # =====================================================
@@ -843,7 +867,7 @@ with tab_ppl:
             columns=[
             "REVOKED BY Pengawas",
             "SUBMITTED RESPONDENT",
-            "OPEN", "email"
+            "OPEN", "email", "APPROVED BY Pengawas", "TASKFORCE"
         ],
             errors="ignore"
         )
