@@ -867,7 +867,7 @@ with tab_ppl:
             columns=[
             "REVOKED BY Pengawas",
             "SUBMITTED RESPONDENT",
-            "OPEN", "email", "APPROVED BY Pengawas", "TASKFORCE"
+            "OPEN", "email", "TASKFORCE"
         ],
             errors="ignore"
         )
