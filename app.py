@@ -333,7 +333,7 @@ def tampil_card(
         </div>
 
         <div style="font-size:11px;">
-            Target: {int(target)}
+            Target per hari: {int(target)}
         </div>
 
     
