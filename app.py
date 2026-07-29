@@ -206,7 +206,7 @@ persentase_ppl = (
 )
 
 target_ppl = (
-    df_ppl.set_index("PPL")["TARGET"]
+    df_ppl.set_index("PPL")["TARGET HARIAN"]
     .to_dict()
 )
 
