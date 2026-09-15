@@ -979,7 +979,7 @@ with tab_pml:
     display_pml = (
         data_pml
         .drop(
-        columns=["email", "OPEN", "SUBMITTED RESPONDENT", "DRAFT"],
+        columns=["email", "total", "APPROVED BY  Pengawas"]
         errors="ignore"
         )
         .reset_index(drop=True)
